@@ -1,0 +1,28 @@
+name: answer-quiz
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: quiz
+  cancel-in-progress: false
+jobs:
+  answer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python solver.py
+      - name: commit and push new answers
+        run: |
+          git config user.name "quiz-bot"
+          git config user.email "quiz-bot@users.noreply.github.com"
+          git add answers
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "answers: $(git diff --cached --name-only | sed 's#answers/##' | tr '\n' ' ')"
+          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done
+          exit 1
